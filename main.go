@@ -6,6 +6,9 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/veandco/go-sdl2/sdl"
 	"go.bug.st/serial"
@@ -54,11 +57,21 @@ func main() {
 	options := &serial.Mode{
 		BaudRate: 115200,
 	}
-	port, err := serial.Open("/dev/ttyAMA0", options)
+	port, err := serial.Open("/dev/ttyAMA10", options)
 	if err != nil {
 		panic(err)
 	}
-	_ = port
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+		err := port.Close()
+		if err != nil {
+			panic(err)
+		}
+		os.Exit(1)
+	}()
 
 	var event sdl.Event
 	var running bool
