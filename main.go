@@ -5,10 +5,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/veandco/go-sdl2/sdl"
 	"go.bug.st/serial"
@@ -62,6 +64,8 @@ func main() {
 		panic(err)
 	}
 
+	var running bool
+
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
@@ -70,11 +74,11 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+		running = false
 		os.Exit(1)
 	}()
 
 	var event sdl.Event
-	var running bool
 	sdl.Init(sdl.INIT_JOYSTICK)
 	defer sdl.Quit()
 	sdl.JoystickEventState(sdl.ENABLE)
@@ -84,6 +88,59 @@ func main() {
 	joystickRight := JoystickStateNone
 	//var speed int16
 	var mode Mode
+
+	go func() {
+		for running {
+			time.Sleep(100 * time.Millisecond)
+			switch joystickRight {
+			case JoystickStateUp:
+				message := map[string]interface{}{
+					"T": 1,
+					"L": 0,
+					"R": .1,
+				}
+				data, err := json.Marshal(message)
+				if err != nil {
+					panic(err)
+				}
+				data = append(data, '\n')
+				_, err = port.Write(data)
+				if err != nil {
+					panic(err)
+				}
+			case JoystickStateDown:
+				message := map[string]interface{}{
+					"T": 1,
+					"L": 0,
+					"R": -.1,
+				}
+				data, err := json.Marshal(message)
+				if err != nil {
+					panic(err)
+				}
+				data = append(data, '\n')
+				_, err = port.Write(data)
+				if err != nil {
+					panic(err)
+				}
+			case JoystickStateNone:
+				message := map[string]interface{}{
+					"T": 1,
+					"L": 0,
+					"R": 0,
+				}
+				data, err := json.Marshal(message)
+				if err != nil {
+					panic(err)
+				}
+				data = append(data, '\n')
+				_, err = port.Write(data)
+				if err != nil {
+					panic(err)
+				}
+			}
+		}
+	}()
 
 	_, _ = joystickLeft, joystickRight
 	for running {
