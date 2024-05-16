@@ -5,16 +5,20 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"image"
+	"math"
+	"math/cmplx"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	. "github.com/pointlander/matrix"
-
+	"github.com/mjibson/go-dsp/dsputils"
+	"github.com/mjibson/go-dsp/fft"
+	"github.com/pointlander/compress"
 	"github.com/veandco/go-sdl2/sdl"
 	"go.bug.st/serial"
 )
@@ -28,6 +32,8 @@ type (
 	Mode uint
 	// Camera is a camera
 	TypeCamera uint
+	// Action is an action to take
+	TypeAction uint
 )
 
 const (
@@ -46,6 +52,19 @@ const (
 	ModeAuto
 )
 
+const (
+	// ActionLeft
+	ActionLeft TypeAction = iota
+	// ActionRight
+	ActionRight
+	// ActionForward
+	ActionForward
+	// ActionBackward
+	ActionBacckward
+	// ActionNumbers
+	ActionNumbers
+)
+
 // String returns a string representation of the JoystickState
 func (j JoystickState) String() string {
 	switch j {
@@ -60,11 +79,9 @@ func (j JoystickState) String() string {
 
 // Frame is a video frame
 type Frame struct {
-	Frame image.Image
-	DCT   [][]float64
-	Query Matrix
-	Key   Matrix
-	Value Matrix
+	Frame *image.YCbCr
+	Thumb image.Image
+	Gray  *image.Gray16
 }
 
 func main() {
@@ -93,9 +110,65 @@ func main() {
 	camera := NewV4LCamera()
 	go camera.Start("/dev/video0")
 	go func() {
+		var imgBuffer *dsputils.Matrix
+		imgIndex := 0
+		imgEntropy := make([]byte, 1024)
+		imgEntropyIndex := 0
+		actionIndex := 0
+		actionBuffer := make([]byte, 1024)
+		actionBufferIndex := 0
 		select {
 		case img := <-camera.Images:
-			_ = img
+			dx := img.Gray.Bounds().Dx()
+			dy := img.Gray.Bounds().Dy()
+			if imgBuffer == nil {
+				imgBuffer = dsputils.MakeMatrix(make([]complex128, 8*(dx/8)*(dy/8)), []int{8, dx / 8, dy / 8})
+			}
+			imgIndex = (imgIndex + 1) % 8
+			for x := 0; x < dx; x++ {
+				for y := 0; y < dx; y++ {
+					g := img.Gray.Gray16At(x, y)
+					imgBuffer.SetValue(complex(float64(g.Y)/65536, 0), []int{imgIndex, x, y})
+				}
+			}
+			freq := fft.FFTN(imgBuffer)
+			sum := 0.0
+			for i := 0; i < 8; i++ {
+				for x := 0; x < dx; x++ {
+					for y := 0; y < dy; y++ {
+						sum += cmplx.Abs(freq.Value([]int{i, x, y}))
+					}
+				}
+			}
+			entropy := 0.0
+			for i := 0; i < 8; i++ {
+				for x := 0; x < dx; x++ {
+					for y := 0; y < dy; y++ {
+						value := cmplx.Abs(freq.Value([]int{i, x, y})) / sum
+						entropy += value * math.Log2(value)
+					}
+				}
+			}
+			entropy = -entropy
+			imgEntropyIndex = (imgEntropyIndex + 1) % 512
+			imgEntropy[imgEntropyIndex] = byte(math.Round(entropy))
+			actionIndex = (actionIndex + 1) % 512
+			actionBufferIndex = (actionBufferIndex + 1) % 1024
+			min, action := 256.0, 0
+			for a := 0; a < int(ActionNumbers); a++ {
+				actionBuffer[actionBufferIndex] = byte(a)
+				output := bytes.Buffer{}
+				compress.Mark1Compress1(actionBuffer, &output)
+				entropy := 256 * float64(output.Len()) / 1024
+				imgEntropy[512+actionIndex] = byte(math.Round(entropy))
+				output = bytes.Buffer{}
+				compress.Mark1Compress1(imgEntropy, &output)
+				entropy = 256 * float64(output.Len()) / 1024
+				if entropy < min {
+					min, action = entropy, a
+				}
+			}
+			actionBuffer[actionBufferIndex] = byte(action)
 		}
 	}()
 
