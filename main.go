@@ -60,7 +60,9 @@ const (
 	// ActionForward
 	ActionForward
 	// ActionBackward
-	ActionBacckward
+	ActionBackward
+	// ActionNone
+	ActionNone
 	// ActionNumbers
 	ActionNumbers
 )
@@ -107,6 +109,7 @@ func main() {
 		os.Exit(1)
 	}()
 
+	a := ActionNone
 	camera := NewV4LCamera()
 	go camera.Start("/dev/video0")
 	go func() {
@@ -170,6 +173,7 @@ func main() {
 			}
 			imgEntropy[512+actionIndex] = byte(math.Round(min))
 			actionBuffer[actionBufferIndex] = byte(action)
+			a = TypeAction(action)
 		}
 	}()
 
@@ -203,6 +207,26 @@ func main() {
 		previousLeft, previousRight := 0.0, 0.0
 		for running {
 			time.Sleep(300 * time.Millisecond)
+
+			if mode == ModeAuto {
+				switch a {
+				case ActionForward:
+					joystickLeft = JoystickStateUp
+					joystickRight = JoystickStateUp
+				case ActionBackward:
+					joystickLeft = JoystickStateDown
+					joystickRight = JoystickStateDown
+				case ActionLeft:
+					joystickLeft = JoystickStateDown
+					joystickRight = JoystickStateUp
+				case ActionRight:
+					joystickLeft = JoystickStateUp
+					joystickRight = JoystickStateDown
+				case ActionNone:
+					joystickLeft = JoystickStateNone
+					joystickRight = JoystickStateNone
+				}
+			}
 
 			switch joystickLeft {
 			case JoystickStateUp:
