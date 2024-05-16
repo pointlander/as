@@ -59,7 +59,7 @@ func main() {
 	options := &serial.Mode{
 		BaudRate: 115200,
 	}
-	port, err := serial.Open("/dev/ttyAMA10", options)
+	port, err := serial.Open("/dev/ttyAMA0", options)
 	if err != nil {
 		panic(err)
 	}
@@ -90,14 +90,28 @@ func main() {
 	var mode Mode
 
 	go func() {
+		message := map[string]interface{}{
+			"T":      900,
+			"main":   2,
+			"module": 0,
+		}
+		data, err := json.Marshal(message)
+		if err != nil {
+			panic(err)
+		}
+		data = append(data, '\n')
+		_, err = port.Write(data)
+		if err != nil {
+			panic(err)
+		}
 		for running {
 			time.Sleep(100 * time.Millisecond)
 			switch joystickRight {
 			case JoystickStateUp:
 				message := map[string]interface{}{
 					"T": 1,
-					"L": 0,
-					"R": .1,
+					"L": .3,
+					"R": .3,
 				}
 				data, err := json.Marshal(message)
 				if err != nil {
@@ -111,8 +125,8 @@ func main() {
 			case JoystickStateDown:
 				message := map[string]interface{}{
 					"T": 1,
-					"L": 0,
-					"R": -.1,
+					"L": -.3,
+					"R": -.3,
 				}
 				data, err := json.Marshal(message)
 				if err != nil {
