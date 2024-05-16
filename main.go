@@ -7,10 +7,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"image"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	. "github.com/pointlander/matrix"
 
 	"github.com/veandco/go-sdl2/sdl"
 	"go.bug.st/serial"
@@ -55,6 +58,15 @@ func (j JoystickState) String() string {
 	}
 }
 
+// Frame is a video frame
+type Frame struct {
+	Frame image.Image
+	DCT   [][]float64
+	Query Matrix
+	Key   Matrix
+	Value Matrix
+}
+
 func main() {
 	options := &serial.Mode{
 		BaudRate: 115200,
@@ -76,6 +88,15 @@ func main() {
 		}
 		running = false
 		os.Exit(1)
+	}()
+
+	camera := NewV4LCamera()
+	go camera.Start("/dev/video0")
+	go func() {
+		select {
+		case img := <-camera.Images:
+			_ = img
+		}
 	}()
 
 	var event sdl.Event
@@ -107,7 +128,7 @@ func main() {
 		leftSpeed, rightSpeed := 0.0, 0.0
 		previousLeft, previousRight := 0.0, 0.0
 		for running {
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(300 * time.Millisecond)
 
 			switch joystickLeft {
 			case JoystickStateUp:
