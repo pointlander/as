@@ -86,7 +86,7 @@ func main() {
 	var axis [5]int16
 	joystickLeft := JoystickStateNone
 	joystickRight := JoystickStateNone
-	//var speed int16
+	speed := 0.2
 	var mode Mode
 
 	go func() {
@@ -111,17 +111,17 @@ func main() {
 
 			switch joystickLeft {
 			case JoystickStateUp:
-				leftSpeed = .3
+				leftSpeed = speed
 			case JoystickStateDown:
-				leftSpeed = -.3
+				leftSpeed = -speed
 			case JoystickStateNone:
 				leftSpeed = 0.0
 			}
 			switch joystickRight {
 			case JoystickStateUp:
-				rightSpeed = .3
+				rightSpeed = speed
 			case JoystickStateDown:
-				rightSpeed = -.3
+				rightSpeed = -speed
 			case JoystickStateNone:
 				rightSpeed = 0.0
 			}
@@ -211,7 +211,10 @@ func main() {
 						joystickRight = JoystickStateNone
 					}
 				} else if t.Button == 1 && t.State == 1 {
-					//pwm = (pwm + 25) % 100
+					speed += .1
+					if speed > .3 {
+						speed = 0.1
+					}
 				}
 			case *sdl.JoyHatEvent:
 				fmt.Printf("[%d ms] Hat:%d\tvalue:%d\n",
