@@ -104,55 +104,46 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+		leftSpeed, rightSpeed := 0.0, 0.0
+		previousLeft, previousRight := 0.0, 0.0
 		for running {
 			time.Sleep(100 * time.Millisecond)
+
+			switch joystickLeft {
+			case JoystickStateUp:
+				leftSpeed = .3
+			case JoystickStateDown:
+				leftSpeed = -.3
+			case JoystickStateNone:
+				leftSpeed = 0.0
+			}
 			switch joystickRight {
 			case JoystickStateUp:
-				message := map[string]interface{}{
-					"T": 1,
-					"L": .3,
-					"R": .3,
-				}
-				data, err := json.Marshal(message)
-				if err != nil {
-					panic(err)
-				}
-				data = append(data, '\n')
-				_, err = port.Write(data)
-				if err != nil {
-					panic(err)
-				}
+				rightSpeed = .3
 			case JoystickStateDown:
-				message := map[string]interface{}{
-					"T": 1,
-					"L": -.3,
-					"R": -.3,
-				}
-				data, err := json.Marshal(message)
-				if err != nil {
-					panic(err)
-				}
-				data = append(data, '\n')
-				_, err = port.Write(data)
-				if err != nil {
-					panic(err)
-				}
+				rightSpeed = -.3
 			case JoystickStateNone:
-				message := map[string]interface{}{
-					"T": 1,
-					"L": 0,
-					"R": 0,
-				}
-				data, err := json.Marshal(message)
-				if err != nil {
-					panic(err)
-				}
-				data = append(data, '\n')
-				_, err = port.Write(data)
-				if err != nil {
-					panic(err)
-				}
+				rightSpeed = 0.0
 			}
+
+			if leftSpeed == previousLeft && rightSpeed == previousRight {
+				continue
+			}
+			message := map[string]interface{}{
+				"T": 1,
+				"L": leftSpeed,
+				"R": rightSpeed,
+			}
+			data, err := json.Marshal(message)
+			if err != nil {
+				panic(err)
+			}
+			data = append(data, '\n')
+			_, err = port.Write(data)
+			if err != nil {
+				panic(err)
+			}
+			previousLeft, previousRight = leftSpeed, rightSpeed
 		}
 	}()
 
