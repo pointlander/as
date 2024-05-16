@@ -168,6 +168,7 @@ func main() {
 					min, action = entropy, a
 				}
 			}
+			imgEntropy[512+actionIndex] = byte(math.Round(min))
 			actionBuffer[actionBufferIndex] = byte(action)
 		}
 	}()
