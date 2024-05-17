@@ -200,7 +200,7 @@ func main() {
 				compress.Mark1Compress1(imgEntropy, &output)
 				entropies[a] = float64(output.Len()) / 1024
 			}
-			normalized := softmax(entropies, .5)
+			normalized := softmax(entropies, .4)
 			sum, action, selected := 0.0, 0, rng.Float64()
 			for i, value := range normalized {
 				sum += value
