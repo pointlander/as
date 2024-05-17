@@ -92,7 +92,7 @@ type Frame struct {
 	Gray  *image.Gray16
 }
 
-func softmax(values []float64) []float64 {
+func softmax(values []float64, t float64) []float64 {
 	output := make([]float64, len(values))
 	max := 0.0
 	for _, v := range values {
@@ -103,10 +103,12 @@ func softmax(values []float64) []float64 {
 	s := max * S
 	sum := 0.0
 	for j, value := range values {
+		value /= t
 		output[j] = math.Exp(value - s)
 		sum += output[j]
 	}
 	for j, value := range values {
+		value /= t
 		output[j] = value / sum
 	}
 	return output
@@ -144,7 +146,7 @@ func main() {
 		imgIndex := 0
 		imgEntropy := make([]byte, 1024)
 		imgEntropyIndex := 0
-		actionIndex := 0
+		actionIndex := 1
 		actionBuffer := make([]byte, 1024)
 		for i := 0; i < len(imgEntropy); i++ {
 			imgEntropy[i] = byte(rng.Intn(256))
@@ -182,10 +184,10 @@ func main() {
 					}
 				}
 			}
-			entropy = -entropy * 32
-			imgEntropyIndex = (imgEntropyIndex + 1) % 512
+			entropy = -entropy * 4
+			imgEntropyIndex = (imgEntropyIndex + 2) % 1024
 			imgEntropy[imgEntropyIndex] = byte(math.Round(entropy))
-			actionIndex = (actionIndex + 1) % 512
+			actionIndex = (actionIndex + 2) % 1024
 			actionBufferIndex = (actionBufferIndex + 1) % 1024
 			entropies := make([]float64, ActionCount)
 			for a := 0; a < int(ActionCount); a++ {
@@ -193,12 +195,12 @@ func main() {
 				output := bytes.Buffer{}
 				compress.Mark1Compress1(actionBuffer, &output)
 				entropy := 256 * float64(output.Len()) / 1024
-				imgEntropy[512+actionIndex] = byte(math.Round(entropy))
+				imgEntropy[actionIndex] = byte(math.Round(entropy))
 				output = bytes.Buffer{}
 				compress.Mark1Compress1(imgEntropy, &output)
 				entropies[a] = float64(output.Len()) / 1024
 			}
-			normalized := softmax(entropies)
+			normalized := softmax(entropies, .5)
 			sum, action, selected := 0.0, 0, rng.Float64()
 			for i, value := range normalized {
 				sum += value
@@ -207,7 +209,7 @@ func main() {
 					break
 				}
 			}
-			imgEntropy[512+actionIndex] = byte(math.Round(256 * entropies[action]))
+			imgEntropy[actionIndex] = byte(math.Round(256 * entropies[action]))
 			actionBuffer[actionBufferIndex] = byte(action)
 			a = TypeAction(action)
 		}
