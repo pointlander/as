@@ -157,11 +157,11 @@ func main() {
 			dx := img.Gray.Bounds().Dx()
 			dy := img.Gray.Bounds().Dy()
 			if imgBuffer == nil {
-				imgBuffer = dsputils.MakeMatrix(make([]complex128, 8*(dx/8)*(dy/8)), []int{8, dx / 8, dy / 8})
+				imgBuffer = dsputils.MakeMatrix(make([]complex128, 8*dx*dy), []int{8, dx, dy})
 			}
 			imgIndex = (imgIndex + 1) % 8
-			for x := 0; x < dx/8; x++ {
-				for y := 0; y < dy/8; y++ {
+			for x := 0; x < dx; x++ {
+				for y := 0; y < dy; y++ {
 					g := img.Gray.Gray16At(x, y)
 					imgBuffer.SetValue(complex(float64(g.Y)/65536, 0), []int{imgIndex, x, y})
 				}
@@ -169,16 +169,16 @@ func main() {
 			freq := fft.FFTN(imgBuffer)
 			sum := 0.0
 			for i := 0; i < 8; i++ {
-				for x := 0; x < dx/8; x++ {
-					for y := 0; y < dy/8; y++ {
+				for x := 0; x < dx; x++ {
+					for y := 0; y < dy; y++ {
 						sum += cmplx.Abs(freq.Value([]int{i, x, y}))
 					}
 				}
 			}
 			entropy := 0.0
 			for i := 0; i < 8; i++ {
-				for x := 0; x < dx/8; x++ {
-					for y := 0; y < dy/8; y++ {
+				for x := 0; x < dx; x++ {
+					for y := 0; y < dy; y++ {
 						value := cmplx.Abs(freq.Value([]int{i, x, y})) / sum
 						entropy += value * math.Log2(value)
 					}
