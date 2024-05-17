@@ -199,13 +199,15 @@ func main() {
 				entropies[a] = float64(output.Len()) / 1024
 			}
 			normalized := softmax(entropies)
-			max, action := 0.0, 0
+			sum, action, selected := 0.0, 0, rng.Float64()
 			for i, value := range normalized {
-				if value > max {
-					max, action = value, i
+				sum += value
+				if sum > selected {
+					action = i
+					break
 				}
 			}
-			imgEntropy[512+actionIndex] = byte(math.Round(256 * max))
+			imgEntropy[512+actionIndex] = byte(math.Round(256 * entropies[action]))
 			actionBuffer[actionBufferIndex] = byte(action)
 			a = TypeAction(action)
 		}
