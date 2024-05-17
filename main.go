@@ -137,16 +137,16 @@ func main() {
 			freq := fft.FFTN(imgBuffer)
 			sum := 0.0
 			for i := 0; i < 8; i++ {
-				for x := 0; x < dx; x++ {
-					for y := 0; y < dy; y++ {
+				for x := 0; x < dx/8; x++ {
+					for y := 0; y < dy/8; y++ {
 						sum += cmplx.Abs(freq.Value([]int{i, x, y}))
 					}
 				}
 			}
 			entropy := 0.0
 			for i := 0; i < 8; i++ {
-				for x := 0; x < dx; x++ {
-					for y := 0; y < dy; y++ {
+				for x := 0; x < dx/8; x++ {
+					for y := 0; y < dy/8; y++ {
 						value := cmplx.Abs(freq.Value([]int{i, x, y})) / sum
 						entropy += value * math.Log2(value)
 					}
