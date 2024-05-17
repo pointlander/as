@@ -11,6 +11,7 @@ import (
 	"image"
 	"math"
 	"math/cmplx"
+	"math/rand"
 	"os"
 	"os/signal"
 	"syscall"
@@ -113,15 +114,19 @@ func main() {
 	camera := NewV4LCamera()
 	go camera.Start("/dev/video0")
 	go func() {
+		rng := rand.New(rand.NewSource(1))
 		var imgBuffer *dsputils.Matrix
 		imgIndex := 0
 		imgEntropy := make([]byte, 1024)
 		imgEntropyIndex := 0
 		actionIndex := 0
 		actionBuffer := make([]byte, 1024)
+		for i := 0; i < len(imgEntropy); i++ {
+			imgEntropy[i] = byte(rng.Intn(256))
+			actionBuffer[i] = byte(rng.Intn(256))
+		}
 		actionBufferIndex := 0
-		select {
-		case img := <-camera.Images:
+		for img := range camera.Images {
 			dx := img.Gray.Bounds().Dx()
 			dy := img.Gray.Bounds().Dy()
 			if imgBuffer == nil {
@@ -152,13 +157,13 @@ func main() {
 					}
 				}
 			}
-			entropy = -entropy
+			entropy = -entropy * 32
 			imgEntropyIndex = (imgEntropyIndex + 1) % 512
 			imgEntropy[imgEntropyIndex] = byte(math.Round(entropy))
 			actionIndex = (actionIndex + 1) % 512
 			actionBufferIndex = (actionBufferIndex + 1) % 1024
 			min, action := 256.0, 0
-			for a := 0; a < int(ActionNumbers); a++ {
+			for a := 0; a < int(ActionNone); a++ {
 				actionBuffer[actionBufferIndex] = byte(a)
 				output := bytes.Buffer{}
 				compress.Mark1Compress1(actionBuffer, &output)
@@ -170,6 +175,9 @@ func main() {
 				if entropy < min {
 					min, action = entropy, a
 				}
+			}
+			if rng.Float64()*256 > min {
+				action = rng.Intn(int(ActionNone))
 			}
 			imgEntropy[512+actionIndex] = byte(math.Round(min))
 			actionBuffer[actionBufferIndex] = byte(action)
@@ -204,7 +212,6 @@ func main() {
 			panic(err)
 		}
 		leftSpeed, rightSpeed := 0.0, 0.0
-		previousLeft, previousRight := 0.0, 0.0
 		for running {
 			time.Sleep(300 * time.Millisecond)
 
@@ -245,9 +252,6 @@ func main() {
 				rightSpeed = 0.0
 			}
 
-			if leftSpeed == previousLeft && rightSpeed == previousRight {
-				continue
-			}
 			message := map[string]interface{}{
 				"T": 1,
 				"L": leftSpeed,
@@ -262,7 +266,6 @@ func main() {
 			if err != nil {
 				panic(err)
 			}
-			previousLeft, previousRight = leftSpeed, rightSpeed
 		}
 	}()
 
