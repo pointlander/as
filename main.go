@@ -195,12 +195,12 @@ func main() {
 			actionBufferIndex = (actionBufferIndex + 1) % Size
 			entropies := make([]float64, ActionCount)
 			for a := 0; a < int(ActionCount); a++ {
-				actionBuffer[actionBufferIndex] = byte(a)
+				//actionBuffer[actionBufferIndex] = byte(a)
+				//output := bytes.Buffer{}
+				//compress.Mark1Compress1(actionBuffer, &output)
+				//entropy := 256 * float64(output.Len()) / Size
+				actionState[actionIndex] = byte(a) //byte(math.Round(entropy))
 				output := bytes.Buffer{}
-				compress.Mark1Compress1(actionBuffer, &output)
-				entropy := 256 * float64(output.Len()) / Size
-				actionState[actionIndex] = byte(math.Round(entropy))
-				output = bytes.Buffer{}
 				compress.Mark1Compress1(actionState, &output)
 				entropies[a] = float64(output.Len()) / Size
 			}
@@ -213,8 +213,8 @@ func main() {
 					break
 				}
 			}
-			actionState[actionIndex] = byte(math.Round(256 * entropies[action]))
-			actionBuffer[actionBufferIndex] = byte(action)
+			actionState[actionIndex] = byte(action) //byte(math.Round(256 * entropies[action]))
+			//actionBuffer[actionBufferIndex] = byte(action)
 			a = TypeAction(action)
 		}
 	}()
