@@ -128,8 +128,8 @@ func main() {
 				imgBuffer = dsputils.MakeMatrix(make([]complex128, 8*(dx/8)*(dy/8)), []int{8, dx / 8, dy / 8})
 			}
 			imgIndex = (imgIndex + 1) % 8
-			for x := 0; x < dx; x++ {
-				for y := 0; y < dx; y++ {
+			for x := 0; x < dx/8; x++ {
+				for y := 0; y < dy/8; y++ {
 					g := img.Gray.Gray16At(x, y)
 					imgBuffer.SetValue(complex(float64(g.Y)/65536, 0), []int{imgIndex, x, y})
 				}
