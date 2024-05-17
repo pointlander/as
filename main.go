@@ -29,6 +29,10 @@ var joysticks = make(map[int]*sdl.Joystick)
 const (
 	// S is the scaling factor for the softmax
 	S = 1.0 - 1e-300
+	// Size is the size of the buffers
+	Size = 1024
+	// FFTDepth is the depth of the fft
+	FFTDepth = 8
 )
 
 type (
@@ -142,24 +146,24 @@ func main() {
 	go camera.Start("/dev/video0")
 	go func() {
 		rng := rand.New(rand.NewSource(1))
+		actionBuffer := make([]byte, Size)
+		actionBufferIndex := 0
 		var imgBuffer *dsputils.Matrix
 		imgIndex := 0
-		imgEntropy := make([]byte, 1024)
-		imgEntropyIndex := 0
+		actionState := make([]byte, Size)
+		stateIndex := 0
 		actionIndex := 1
-		actionBuffer := make([]byte, 1024)
-		for i := 0; i < len(imgEntropy); i++ {
-			imgEntropy[i] = byte(rng.Intn(256))
+		for i := range actionState {
+			actionState[i] = byte(rng.Intn(256))
 			actionBuffer[i] = byte(rng.Intn(256))
 		}
-		actionBufferIndex := 0
 		for img := range camera.Images {
 			dx := img.Gray.Bounds().Dx()
 			dy := img.Gray.Bounds().Dy()
 			if imgBuffer == nil {
-				imgBuffer = dsputils.MakeMatrix(make([]complex128, 8*dx*dy), []int{8, dx, dy})
+				imgBuffer = dsputils.MakeMatrix(make([]complex128, FFTDepth*dx*dy), []int{FFTDepth, dx, dy})
 			}
-			imgIndex = (imgIndex + 1) % 8
+			imgIndex = (imgIndex + 1) % FFTDepth
 			for x := 0; x < dx; x++ {
 				for y := 0; y < dy; y++ {
 					g := img.Gray.Gray16At(x, y)
@@ -168,7 +172,7 @@ func main() {
 			}
 			freq := fft.FFTN(imgBuffer)
 			sum := 0.0
-			for i := 0; i < 8; i++ {
+			for i := 0; i < FFTDepth; i++ {
 				for x := 0; x < dx; x++ {
 					for y := 0; y < dy; y++ {
 						sum += cmplx.Abs(freq.Value([]int{i, x, y}))
@@ -176,7 +180,7 @@ func main() {
 				}
 			}
 			entropy := 0.0
-			for i := 0; i < 8; i++ {
+			for i := 0; i < FFTDepth; i++ {
 				for x := 0; x < dx; x++ {
 					for y := 0; y < dy; y++ {
 						value := cmplx.Abs(freq.Value([]int{i, x, y})) / sum
@@ -185,20 +189,20 @@ func main() {
 				}
 			}
 			entropy = -entropy * 4
-			imgEntropyIndex = (imgEntropyIndex + 2) % 1024
-			imgEntropy[imgEntropyIndex] = byte(math.Round(entropy))
-			actionIndex = (actionIndex + 2) % 1024
-			actionBufferIndex = (actionBufferIndex + 1) % 1024
+			stateIndex = (stateIndex + 2) % Size
+			actionState[stateIndex] = byte(math.Round(entropy))
+			actionIndex = (actionIndex + 2) % Size
+			actionBufferIndex = (actionBufferIndex + 1) % Size
 			entropies := make([]float64, ActionCount)
 			for a := 0; a < int(ActionCount); a++ {
 				actionBuffer[actionBufferIndex] = byte(a)
 				output := bytes.Buffer{}
 				compress.Mark1Compress1(actionBuffer, &output)
-				entropy := 256 * float64(output.Len()) / 1024
-				imgEntropy[actionIndex] = byte(math.Round(entropy))
+				entropy := 256 * float64(output.Len()) / Size
+				actionState[actionIndex] = byte(math.Round(entropy))
 				output = bytes.Buffer{}
-				compress.Mark1Compress1(imgEntropy, &output)
-				entropies[a] = float64(output.Len()) / 1024
+				compress.Mark1Compress1(actionState, &output)
+				entropies[a] = float64(output.Len()) / Size
 			}
 			normalized := softmax(entropies, .4)
 			sum, action, selected := 0.0, 0, rng.Float64()
@@ -209,7 +213,7 @@ func main() {
 					break
 				}
 			}
-			imgEntropy[actionIndex] = byte(math.Round(256 * entropies[action]))
+			actionState[actionIndex] = byte(math.Round(256 * entropies[action]))
 			actionBuffer[actionBufferIndex] = byte(action)
 			a = TypeAction(action)
 		}
