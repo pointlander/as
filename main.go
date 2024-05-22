@@ -147,9 +147,7 @@ func main() {
 	go func() {
 		rng := rand.New(rand.NewSource(1))
 		actionBuffer := make([]byte, Size)
-		actionBufferIndex := 0
 		var imgBuffer *dsputils.Matrix
-		imgIndex := 0
 		actionState := make([]byte, Size)
 		stateIndex := 0
 		actionIndex := 1
@@ -163,11 +161,17 @@ func main() {
 			if imgBuffer == nil {
 				imgBuffer = dsputils.MakeMatrix(make([]complex128, FFTDepth*dx*dy), []int{FFTDepth, dx, dy})
 			}
-			imgIndex = (imgIndex + 1) % FFTDepth
+			for d := FFTDepth - 1; d > 0; d-- {
+				for x := 0; x < dx; x++ {
+					for y := 0; y < dy; y++ {
+						imgBuffer.SetValue(imgBuffer.Value([]int{d - 1, x, y}), []int{d, x, y})
+					}
+				}
+			}
 			for x := 0; x < dx; x++ {
 				for y := 0; y < dy; y++ {
 					g := img.Gray.Gray16At(x, y)
-					imgBuffer.SetValue(complex(float64(g.Y)/65536, 0), []int{imgIndex, x, y})
+					imgBuffer.SetValue(complex(float64(g.Y)/65536, 0), []int{0, x, y})
 				}
 			}
 			freq := fft.FFTN(imgBuffer)
@@ -192,10 +196,12 @@ func main() {
 			stateIndex = (stateIndex + 2) % Size
 			actionState[stateIndex] = byte(math.Round(entropy))
 			actionIndex = (actionIndex + 2) % Size
-			actionBufferIndex = (actionBufferIndex + 1) % Size
 			entropies := make([]float64, ActionCount)
 			for a := 0; a < int(ActionCount); a++ {
-				actionBuffer[actionBufferIndex] = byte(a)
+				pre := byte(a)
+				for i, value := range actionBuffer[:len(actionBuffer)-1] {
+					actionBuffer[i], pre = pre, value
+				}
 				output := bytes.Buffer{}
 				compress.Mark1Compress1(actionBuffer, &output)
 				entropy := 256 * float64(output.Len()) / Size
@@ -214,7 +220,7 @@ func main() {
 				}
 			}
 			actionState[actionIndex] = byte(math.Round(256 * entropies[action]))
-			actionBuffer[actionBufferIndex] = byte(action)
+			actionBuffer[0] = byte(action)
 			a = TypeAction(action)
 		}
 	}()
