@@ -155,6 +155,7 @@ func main() {
 			actionState[i] = byte(rng.Intn(256))
 			actionBuffer[i] = byte(rng.Intn(256))
 		}
+		filter := make([]float64, ActionCount)
 		for img := range camera.Images {
 			dx := img.Gray.Bounds().Dx()
 			dy := img.Gray.Bounds().Dy()
@@ -210,7 +211,10 @@ func main() {
 				compress.Mark1Compress1(actionState, &output)
 				entropies[a] = float64(output.Len()) / Size
 			}
-			normalized := softmax(entropies, .4)
+			for i, value := range entropies {
+				filter[i] = (filter[i] + value) / 2
+			}
+			normalized := softmax(filter, .4)
 			sum, action, selected := 0.0, 0, rng.Float64()
 			for i, value := range normalized {
 				sum += value
