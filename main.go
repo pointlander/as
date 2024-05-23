@@ -180,6 +180,49 @@ func (k *KMind) Step(rng *rand.Rand, entropy float64) int {
 	return action
 }
 
+// Context is a markov context
+type Context [2]byte
+
+// MarkovMind is a markov model mind
+type MarkovMind struct {
+	Action byte
+	State  Context
+	Markov map[Context][ActionCount]float64
+}
+
+// NewMarkovMind creates a new markov model mind
+func NewMarkovMind(rng *rand.Rand) MarkovMind {
+	return MarkovMind{
+		Markov: make(map[Context][ActionCount]float64),
+	}
+}
+
+// Step the markov mind
+func (m *MarkovMind) Step(rng *rand.Rand, entropy float64) int {
+	s := byte(math.Round(entropy))
+	actions := m.Markov[m.State]
+	actions[m.Action] += 1
+	sum := 0.0
+	for _, value := range actions {
+		sum += value
+	}
+	for key, value := range actions {
+		actions[key] = value / sum
+	}
+	normalized := softmax(actions[:], .4)
+	sum, selected := 0.0, rng.Float64()
+	for i, value := range normalized {
+		sum += value
+		if sum > selected {
+			m.Action = byte(i)
+			break
+		}
+	}
+	m.Markov[m.State] = actions
+	m.State[0], m.State[1] = m.State[1], s
+	return int(m.Action)
+}
+
 func main() {
 	options := &serial.Mode{
 		BaudRate: 115200,
@@ -209,7 +252,8 @@ func main() {
 	go func() {
 		rng := rand.New(rand.NewSource(1))
 		var imgBuffer *dsputils.Matrix
-		mind := NewKMind(rng)
+		//mind := NewKMind(rng)
+		mind := NewMarkovMind(rng)
 		for img := range camera.Images {
 			dx := img.Gray.Bounds().Dx()
 			dy := img.Gray.Bounds().Dy()
