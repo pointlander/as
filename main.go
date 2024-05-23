@@ -201,6 +201,7 @@ func NewMarkovMind(rng *rand.Rand) MarkovMind {
 
 // Step the markov mind
 func (m *MarkovMind) Step(rng *rand.Rand, entropy float64) int {
+	entropy *= 4
 	s := byte(math.Round(entropy))
 	action := m.Action
 	actions, ok := m.Markov[m.State]
@@ -283,19 +284,19 @@ func main() {
 				}
 			}
 			freq := fft.FFTN(imgBuffer)
-			/*sum := 0.0
+			sum := 0.0
 			for i := 0; i < FFTDepth; i++ {
 				for x := 0; x < dx; x++ {
 					for y := 0; y < dy; y++ {
 						sum += cmplx.Abs(freq.Value([]int{i, x, y}))
 					}
 				}
-			}*/
+			}
 			entropy := 0.0
 			for i := 0; i < FFTDepth; i++ {
 				for x := 0; x < dx; x++ {
 					for y := 0; y < dy; y++ {
-						value := cmplx.Abs(freq.Value([]int{i, x, y}))
+						value := cmplx.Abs(freq.Value([]int{i, x, y})) / sum
 						entropy += value * math.Log2(value)
 					}
 				}
