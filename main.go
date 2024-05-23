@@ -7,6 +7,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"image"
 	"math"
@@ -233,7 +234,19 @@ func (m *MarkovMind) Step(rng *rand.Rand, entropy float64) int {
 	return int(m.Action)
 }
 
+var (
+	// FlagSim is simulation mode
+	FlagSim = flag.Bool("sim", false, "simulation mode")
+)
+
 func main() {
+	flag.Parse()
+
+	if *FlagSim {
+		Simulation()
+		return
+	}
+
 	options := &serial.Mode{
 		BaudRate: 115200,
 	}
