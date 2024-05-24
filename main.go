@@ -188,15 +188,17 @@ type Context [2]byte
 
 // MarkovMind is a markov model mind
 type MarkovMind struct {
-	Action byte
-	State  Context
-	Markov map[Context][ActionCount]float64
+	Actions int
+	Action  byte
+	State   Context
+	Markov  map[Context][]float64
 }
 
 // NewMarkovMind creates a new markov model mind
-func NewMarkovMind(rng *rand.Rand) MarkovMind {
+func NewMarkovMind(rng *rand.Rand, actions int) MarkovMind {
 	return MarkovMind{
-		Markov: make(map[Context][ActionCount]float64),
+		Actions: actions,
+		Markov:  make(map[Context][]float64),
 	}
 }
 
@@ -207,11 +209,12 @@ func (m *MarkovMind) Step(rng *rand.Rand, entropy float64) int {
 	action := m.Action
 	actions, ok := m.Markov[m.State]
 	if !ok {
+		actions = make([]float64, m.Actions)
 		for key := range actions {
 			actions[key] = rng.Float64()
 		}
 	}
-	normalized := softmax(actions[:], 1)
+	normalized := softmax(actions, 1)
 	sum, selected := 0.0, rng.Float64()
 	for i, value := range normalized {
 		sum += value
@@ -276,7 +279,7 @@ func main() {
 		rng := rand.New(rand.NewSource(1))
 		var imgBuffer *dsputils.Matrix
 		//mind := NewKMind(rng)
-		mind := NewMarkovMind(rng)
+		mind := NewMarkovMind(rng, int(ActionCount))
 		for img := range camera.Images {
 			dx := img.Gray.Bounds().Dx()
 			dy := img.Gray.Bounds().Dy()
