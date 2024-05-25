@@ -90,6 +90,7 @@ func Simulation() {
 				for y := 0; y < dy; y++ {
 					value := cmplx.Abs(freq.Value([]int{i, x, y})) / sum
 					state[index] = byte(255 * value)
+					index++
 				}
 			}
 		}
@@ -101,7 +102,7 @@ func Simulation() {
 		value := img.GrayAt(actionX, actionY)
 		value.Y = (value.Y + 16) % 255
 		img.SetGray(actionX, actionY, value)
-		img.SetGray(rng.Intn(Width), rng.Intn(Height), color.Gray{Y: byte(rng.Intn(256))})
+		//img.SetGray(rng.Intn(Width), rng.Intn(Height), color.Gray{Y: byte(rng.Intn(256))})
 		add(img)
 	}
 
