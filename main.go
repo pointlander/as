@@ -148,7 +148,6 @@ func NewKMind(rng *rand.Rand) KMind {
 
 // KMind steps the kolmogorov complexity mind
 func (k *KMind) Step(rng *rand.Rand, entropy float64) int {
-	entropy *= 4
 	k.StateIndex = (k.StateIndex + 2) % Size
 	k.ActionState[k.StateIndex] = byte(math.Round(entropy))
 	k.ActionIndex = (k.ActionIndex + 2) % Size
@@ -204,7 +203,6 @@ func NewMarkovMind(rng *rand.Rand, actions int) MarkovMind {
 
 // Step the markov mind
 func (m *MarkovMind) Step(rng *rand.Rand, entropy float64) int {
-	entropy *= 4
 	s := byte(math.Round(entropy))
 	action := m.Action
 	actions, ok := m.Markov[m.State]
@@ -318,6 +316,7 @@ func main() {
 				}
 			}
 			entropy = -entropy
+			entropy *= 4
 			action := mind.Step(rng, entropy)
 			a = TypeAction(action)
 		}

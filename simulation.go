@@ -5,25 +5,26 @@
 package main
 
 import (
+	"bytes"
 	"image"
 	"image/color"
 	"image/color/palette"
 	"image/draw"
 	"image/gif"
-	"math"
 	"math/cmplx"
 	"math/rand"
 	"os"
 
 	"github.com/mjibson/go-dsp/dsputils"
 	"github.com/mjibson/go-dsp/fft"
+	"github.com/pointlander/compress"
 )
 
 // Simulation mode
 func Simulation() {
 	const (
-		Width  = 8
-		Height = 8
+		Width  = 16
+		Height = 16
 	)
 	rng := rand.New(rand.NewSource(1))
 
@@ -46,7 +47,7 @@ func Simulation() {
 	for x := 0; x < Width; x++ {
 		for y := 0; y < Height; y++ {
 			value := color.Gray{}
-			if rng.Intn(2) == 0 {
+			if rng.Intn(3) == 0 {
 				value.Y = 0
 			} else {
 				value.Y = 255
@@ -54,8 +55,8 @@ func Simulation() {
 			img.SetGray(x, y, value)
 		}
 	}
-	mindX := NewMarkovMind(rng, 8)
-	mindY := NewMarkovMind(rng, 8)
+	mindX := NewMarkovMind(rng, Width)
+	mindY := NewMarkovMind(rng, Height)
 	var imgBuffer *dsputils.Matrix
 	for i := 0; i < 1024; i++ {
 		dx := img.Bounds().Dx()
@@ -85,18 +86,23 @@ func Simulation() {
 				}
 			}
 		}
-		entropy := 0.0
+		//entropy := 0.0
+		state, index := make([]byte, FFTDepth*dx*dy), 0
 		for i := 0; i < FFTDepth; i++ {
 			for x := 0; x < dx; x++ {
 				for y := 0; y < dy; y++ {
 					value := cmplx.Abs(freq.Value([]int{i, x, y})) / sum
-					if value > 0 {
+					state[index] = byte(255 * value)
+					/*if value > 0 {
 						entropy += value * math.Log2(value)
-					}
+					}*/
 				}
 			}
 		}
-		entropy = -entropy
+		output := bytes.Buffer{}
+		compress.Mark1Compress1(state, &output)
+		//entropy = -entropy
+		entropy := 255 * float64(output.Len()) / float64(len(state))
 		actionX := mindX.Step(rng, entropy)
 		actionY := mindY.Step(rng, entropy)
 		value := img.GrayAt(actionX, actionY)
