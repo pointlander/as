@@ -373,10 +373,10 @@ func main() {
 		rng := rand.New(rand.NewSource(1))
 		//mind := NewKMind(rng)
 		mind := NewMarkovMind(rng, int(ActionCount))
-		sensor := ESensor{}
+		sensor := KSensor{}
 		for img := range camera.Images {
 			entropy := sensor.Sense(img.Gray)
-			entropy *= 4
+			entropy *= 16
 			action := mind.Step(rng, entropy)
 			a = TypeAction(action)
 		}

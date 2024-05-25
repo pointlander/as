@@ -143,7 +143,7 @@ func (vc *V4LCamera) Start(device string) {
 				yuyv.Cr[i] = cp[ii+3]
 
 			}
-			thumb := resize.Resize(uint(w)/8, uint(h)/8, yuyv, resize.NearestNeighbor)
+			thumb := resize.Resize(uint(w)/16, uint(h)/16, yuyv, resize.NearestNeighbor)
 			gray := image.NewGray(thumb.Bounds())
 			dx := thumb.Bounds().Dx()
 			dy := thumb.Bounds().Dy()
