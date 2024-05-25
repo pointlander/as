@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"image"
 	"image/color"
-	"image/color/palette"
 	"image/draw"
 	"image/gif"
 	"math/cmplx"
@@ -28,17 +27,18 @@ func Simulation() {
 	)
 	rng := rand.New(rand.NewSource(1))
 
+	gray := make([]color.Color, 0, 256)
+	for i := 0; i < 256; i++ {
+		gray = append(gray, color.GrayModel.Convert(color.Gray{Y: byte(i)}))
+	}
+	opts := gif.Options{
+		NumColors: 256,
+		Drawer:    draw.FloydSteinberg,
+	}
 	var images []*image.Paletted
 	add := func(img image.Image) {
-		opts := gif.Options{
-			NumColors: 256,
-			Drawer:    draw.FloydSteinberg,
-		}
 		bounds := img.Bounds()
-		paletted := image.NewPaletted(bounds, palette.Plan9[:opts.NumColors])
-		if opts.Quantizer != nil {
-			paletted.Palette = opts.Quantizer.Quantize(make(color.Palette, 0, opts.NumColors), img)
-		}
+		paletted := image.NewPaletted(bounds, gray)
 		opts.Drawer.Draw(paletted, bounds, img, image.Point{})
 		images = append(images, paletted)
 	}
@@ -47,14 +47,11 @@ func Simulation() {
 	for x := 0; x < Width; x++ {
 		for y := 0; y < Height; y++ {
 			value := color.Gray{}
-			if rng.Intn(3) == 0 {
-				value.Y = 0
-			} else {
-				value.Y = 255
-			}
+			value.Y = byte(rng.Intn(256))
 			img.SetGray(x, y, value)
 		}
 	}
+
 	mindX := NewMarkovMind(rng, Width)
 	mindY := NewMarkovMind(rng, Height)
 	var imgBuffer *dsputils.Matrix
@@ -93,25 +90,18 @@ func Simulation() {
 				for y := 0; y < dy; y++ {
 					value := cmplx.Abs(freq.Value([]int{i, x, y})) / sum
 					state[index] = byte(255 * value)
-					/*if value > 0 {
-						entropy += value * math.Log2(value)
-					}*/
 				}
 			}
 		}
 		output := bytes.Buffer{}
 		compress.Mark1Compress1(state, &output)
-		//entropy = -entropy
 		entropy := 255 * float64(output.Len()) / float64(len(state))
 		actionX := mindX.Step(rng, entropy)
 		actionY := mindY.Step(rng, entropy)
 		value := img.GrayAt(actionX, actionY)
-		if value.Y < 128 {
-			value.Y = 255
-		} else {
-			value.Y = 0
-		}
+		value.Y = (value.Y + 16) % 255
 		img.SetGray(actionX, actionY, value)
+		img.SetGray(rng.Intn(Width), rng.Intn(Height), color.Gray{Y: byte(rng.Intn(256))})
 		add(img)
 	}
 
