@@ -94,7 +94,7 @@ func (j JoystickState) String() string {
 type Frame struct {
 	Frame *image.YCbCr
 	Thumb image.Image
-	Gray  *image.Gray16
+	Gray  *image.Gray
 }
 
 func softmax(values []float64, t float64) []float64 {
@@ -235,6 +235,102 @@ func (m *MarkovMind) Step(rng *rand.Rand, entropy float64) int {
 	return int(m.Action)
 }
 
+// ESensor is an entropy sensor
+type ESensor struct {
+	ImgBuffer *dsputils.Matrix
+}
+
+// Sense senses an image
+func (e *ESensor) Sense(img *image.Gray) float64 {
+	dx := img.Bounds().Dx()
+	dy := img.Bounds().Dy()
+	if e.ImgBuffer == nil {
+		e.ImgBuffer = dsputils.MakeMatrix(make([]complex128, FFTDepth*dx*dy), []int{FFTDepth, dx, dy})
+	}
+	for d := FFTDepth - 1; d > 0; d-- {
+		for x := 0; x < dx; x++ {
+			for y := 0; y < dy; y++ {
+				e.ImgBuffer.SetValue(e.ImgBuffer.Value([]int{d - 1, x, y}), []int{d, x, y})
+			}
+		}
+	}
+	for x := 0; x < dx; x++ {
+		for y := 0; y < dy; y++ {
+			g := img.GrayAt(x, y)
+			e.ImgBuffer.SetValue(complex(float64(g.Y)/256, 0), []int{0, x, y})
+		}
+	}
+	freq := fft.FFTN(e.ImgBuffer)
+	sum := 0.0
+	for i := 0; i < FFTDepth; i++ {
+		for x := 0; x < dx; x++ {
+			for y := 0; y < dy; y++ {
+				sum += cmplx.Abs(freq.Value([]int{i, x, y}))
+			}
+		}
+	}
+	entropy := 0.0
+	for i := 0; i < FFTDepth; i++ {
+		for x := 0; x < dx; x++ {
+			for y := 0; y < dy; y++ {
+				value := cmplx.Abs(freq.Value([]int{i, x, y})) / sum
+				entropy += value * math.Log2(value)
+			}
+		}
+	}
+	return -entropy
+}
+
+// KSensor is a kolmogorov sensor
+type KSensor struct {
+	ImgBuffer *dsputils.Matrix
+}
+
+// Sense senses an image
+func (k *KSensor) Sense(img *image.Gray) float64 {
+	dx := img.Bounds().Dx()
+	dy := img.Bounds().Dy()
+	if k.ImgBuffer == nil {
+		k.ImgBuffer = dsputils.MakeMatrix(make([]complex128, FFTDepth*dx*dy), []int{FFTDepth, dx, dy})
+	}
+	for d := FFTDepth - 1; d > 0; d-- {
+		for x := 0; x < dx; x++ {
+			for y := 0; y < dy; y++ {
+				k.ImgBuffer.SetValue(k.ImgBuffer.Value([]int{d - 1, x, y}), []int{d, x, y})
+			}
+		}
+	}
+	for x := 0; x < dx; x++ {
+		for y := 0; y < dy; y++ {
+			g := img.GrayAt(x, y)
+			k.ImgBuffer.SetValue(complex(float64(g.Y)/256, 0), []int{0, x, y})
+		}
+	}
+	freq := fft.FFTN(k.ImgBuffer)
+	sum := 0.0
+	for i := 0; i < FFTDepth; i++ {
+		for x := 0; x < dx; x++ {
+			for y := 0; y < dy; y++ {
+				sum += cmplx.Abs(freq.Value([]int{i, x, y}))
+			}
+		}
+	}
+	state, index := make([]byte, FFTDepth*dx*dy), 0
+	for i := 0; i < FFTDepth; i++ {
+		for x := 0; x < dx; x++ {
+			for y := 0; y < dy; y++ {
+				value := cmplx.Abs(freq.Value([]int{i, x, y})) / sum
+				state[index] = byte(255 * value)
+				index++
+			}
+		}
+	}
+	output := bytes.Buffer{}
+	compress.Mark1Compress1(state, &output)
+	entropy := 255 * float64(output.Len()) / float64(len(state))
+	return entropy
+}
+
 var (
 	// FlagSim is simulation mode
 	FlagSim = flag.Bool("sim", false, "simulation mode")
@@ -275,47 +371,11 @@ func main() {
 	go camera.Start("/dev/video0")
 	go func() {
 		rng := rand.New(rand.NewSource(1))
-		var imgBuffer *dsputils.Matrix
 		//mind := NewKMind(rng)
 		mind := NewMarkovMind(rng, int(ActionCount))
+		sensor := ESensor{}
 		for img := range camera.Images {
-			dx := img.Gray.Bounds().Dx()
-			dy := img.Gray.Bounds().Dy()
-			if imgBuffer == nil {
-				imgBuffer = dsputils.MakeMatrix(make([]complex128, FFTDepth*dx*dy), []int{FFTDepth, dx, dy})
-			}
-			for d := FFTDepth - 1; d > 0; d-- {
-				for x := 0; x < dx; x++ {
-					for y := 0; y < dy; y++ {
-						imgBuffer.SetValue(imgBuffer.Value([]int{d - 1, x, y}), []int{d, x, y})
-					}
-				}
-			}
-			for x := 0; x < dx; x++ {
-				for y := 0; y < dy; y++ {
-					g := img.Gray.Gray16At(x, y)
-					imgBuffer.SetValue(complex(float64(g.Y)/65536, 0), []int{0, x, y})
-				}
-			}
-			freq := fft.FFTN(imgBuffer)
-			sum := 0.0
-			for i := 0; i < FFTDepth; i++ {
-				for x := 0; x < dx; x++ {
-					for y := 0; y < dy; y++ {
-						sum += cmplx.Abs(freq.Value([]int{i, x, y}))
-					}
-				}
-			}
-			entropy := 0.0
-			for i := 0; i < FFTDepth; i++ {
-				for x := 0; x < dx; x++ {
-					for y := 0; y < dy; y++ {
-						value := cmplx.Abs(freq.Value([]int{i, x, y})) / sum
-						entropy += value * math.Log2(value)
-					}
-				}
-			}
-			entropy = -entropy
+			entropy := sensor.Sense(img.Gray)
 			entropy *= 4
 			action := mind.Step(rng, entropy)
 			a = TypeAction(action)

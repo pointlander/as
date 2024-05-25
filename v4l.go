@@ -144,12 +144,12 @@ func (vc *V4LCamera) Start(device string) {
 
 			}
 			thumb := resize.Resize(uint(w)/8, uint(h)/8, yuyv, resize.NearestNeighbor)
-			gray := image.NewGray16(thumb.Bounds())
+			gray := image.NewGray(thumb.Bounds())
 			dx := thumb.Bounds().Dx()
 			dy := thumb.Bounds().Dy()
 			for x := 0; x < dx; x++ {
 				for y := 0; y < dy; y++ {
-					gray.Set(x, y, color.Gray16Model.Convert(thumb.At(x, y)))
+					gray.Set(x, y, color.GrayModel.Convert(thumb.At(x, y)))
 				}
 			}
 

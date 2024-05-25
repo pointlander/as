@@ -5,18 +5,12 @@
 package main
 
 import (
-	"bytes"
 	"image"
 	"image/color"
 	"image/draw"
 	"image/gif"
-	"math/cmplx"
 	"math/rand"
 	"os"
-
-	"github.com/mjibson/go-dsp/dsputils"
-	"github.com/mjibson/go-dsp/fft"
-	"github.com/pointlander/compress"
 )
 
 // Simulation mode
@@ -54,49 +48,9 @@ func Simulation() {
 
 	mindX := NewMarkovMind(rng, Width)
 	mindY := NewMarkovMind(rng, Height)
-	var imgBuffer *dsputils.Matrix
+	sensor := KSensor{}
 	for i := 0; i < 1024; i++ {
-		dx := img.Bounds().Dx()
-		dy := img.Bounds().Dy()
-		if imgBuffer == nil {
-			imgBuffer = dsputils.MakeMatrix(make([]complex128, FFTDepth*dx*dy), []int{FFTDepth, dx, dy})
-		}
-		for d := FFTDepth - 1; d > 0; d-- {
-			for x := 0; x < dx; x++ {
-				for y := 0; y < dy; y++ {
-					imgBuffer.SetValue(imgBuffer.Value([]int{d - 1, x, y}), []int{d, x, y})
-				}
-			}
-		}
-		for x := 0; x < dx; x++ {
-			for y := 0; y < dy; y++ {
-				g := img.GrayAt(x, y)
-				imgBuffer.SetValue(complex(float64(g.Y)/256, 0), []int{0, x, y})
-			}
-		}
-		freq := fft.FFTN(imgBuffer)
-		sum := 0.0
-		for i := 0; i < FFTDepth; i++ {
-			for x := 0; x < dx; x++ {
-				for y := 0; y < dy; y++ {
-					sum += cmplx.Abs(freq.Value([]int{i, x, y}))
-				}
-			}
-		}
-		//entropy := 0.0
-		state, index := make([]byte, FFTDepth*dx*dy), 0
-		for i := 0; i < FFTDepth; i++ {
-			for x := 0; x < dx; x++ {
-				for y := 0; y < dy; y++ {
-					value := cmplx.Abs(freq.Value([]int{i, x, y})) / sum
-					state[index] = byte(255 * value)
-					index++
-				}
-			}
-		}
-		output := bytes.Buffer{}
-		compress.Mark1Compress1(state, &output)
-		entropy := 255 * float64(output.Len()) / float64(len(state))
+		entropy := sensor.Sense(img)
 		actionX := mindX.Step(rng, entropy)
 		actionY := mindY.Step(rng, entropy)
 		value := img.GrayAt(actionX, actionY)
