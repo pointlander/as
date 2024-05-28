@@ -48,14 +48,38 @@ func Simulation() {
 
 	mindX := NewMarkovMind(rng, Width)
 	mindY := NewMarkovMind(rng, Height)
+	action := NewMarkovMind(rng, 255)
+
+	mindX1 := NewMarkovMind(rng, Width)
+	mindY1 := NewMarkovMind(rng, Height)
+	action1 := NewMarkovMind(rng, 255)
+
+	mindX2 := NewMarkovMind(rng, Width)
+	mindY2 := NewMarkovMind(rng, Height)
+	action2 := NewMarkovMind(rng, 255)
 	sensor := KSensor{}
 	for i := 0; i < 1024; i++ {
 		entropy := sensor.Sense(img)
 		actionX := mindX.Step(rng, entropy)
 		actionY := mindY.Step(rng, entropy)
+		act := action.Step(rng, entropy)
 		value := img.GrayAt(actionX, actionY)
-		value.Y = (value.Y + 16) % 255
+		value.Y += byte(act)
 		img.SetGray(actionX, actionY, value)
+
+		actionX1 := mindX1.Step(rng, entropy)
+		actionY1 := mindY1.Step(rng, entropy)
+		act1 := action1.Step(rng, entropy)
+		value1 := img.GrayAt(actionX1, actionY1)
+		value1.Y += byte(act1)
+		img.SetGray(actionX1, actionY1, value1)
+
+		actionX2 := mindX2.Step(rng, entropy)
+		actionY2 := mindY2.Step(rng, entropy)
+		act2 := action2.Step(rng, entropy)
+		value2 := img.GrayAt(actionX2, actionY2)
+		value2.Y += byte(act2)
+		img.SetGray(actionX2, actionY2, value2)
 		//img.SetGray(rng.Intn(Width), rng.Intn(Height), color.Gray{Y: byte(rng.Intn(256))})
 		add(img)
 	}
