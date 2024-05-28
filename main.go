@@ -308,19 +308,24 @@ func (k *KSensor) Sense(img *image.Gray) float64 {
 	}
 	freq := fft.FFTN(k.ImgBuffer)
 	sum := 0.0
+	sumPhase := 0.0
 	for i := 0; i < FFTDepth; i++ {
 		for x := 0; x < dx; x++ {
 			for y := 0; y < dy; y++ {
-				sum += cmplx.Abs(freq.Value([]int{i, x, y}))
+				value := freq.Value([]int{i, x, y})
+				sum += cmplx.Abs(value)
+				sumPhase += cmplx.Phase(value) + math.Pi
 			}
 		}
 	}
-	state, index := make([]byte, FFTDepth*dx*dy), 0
+	state, index := make([]byte, 2*FFTDepth*dx*dy), 0
 	for i := 0; i < FFTDepth; i++ {
 		for x := 0; x < dx; x++ {
 			for y := 0; y < dy; y++ {
-				value := cmplx.Abs(freq.Value([]int{i, x, y})) / sum
-				state[index] = byte(255 * value)
+				value := freq.Value([]int{i, x, y})
+				state[index] = byte(255 * cmplx.Abs(value) / sum)
+				index++
+				state[index] = byte(255 * (cmplx.Phase(value) + math.Pi) / sumPhase)
 				index++
 			}
 		}
