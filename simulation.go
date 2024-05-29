@@ -59,7 +59,7 @@ func Simulation() {
 	action2 := NewMarkovMind(rng, 255)
 	sensor := KSensor{}
 	for i := 0; i < 1024; i++ {
-		entropy := sensor.Sense(img)
+		entropy := sensor.Sense(rng, img)
 		actionX := mindX.Step(rng, entropy)
 		actionY := mindY.Step(rng, entropy)
 		act := action.Step(rng, entropy)

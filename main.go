@@ -183,7 +183,7 @@ func (k *KMind) Step(rng *rand.Rand, entropy float64) int {
 }
 
 // Context is a markov context
-type Context [2]byte
+type Context [3]byte
 
 // MarkovMind is a markov model mind
 type MarkovMind struct {
@@ -231,7 +231,7 @@ func (m *MarkovMind) Step(rng *rand.Rand, entropy float64) int {
 		actions[key] = value / sum
 	}
 	m.Markov[m.State] = actions
-	m.State[0], m.State[1] = m.State[1], s
+	m.State[0], m.State[1], m.State[2] = m.State[1], m.State[2], s
 	return int(m.Action)
 }
 
@@ -287,7 +287,7 @@ type KSensor struct {
 }
 
 // Sense senses an image
-func (k *KSensor) Sense(img *image.Gray) float64 {
+func (k *KSensor) Sense(rng *rand.Rand, img *image.Gray) float64 {
 	dx := img.Bounds().Dx()
 	dy := img.Bounds().Dy()
 	if k.ImgBuffer == nil {
@@ -302,8 +302,16 @@ func (k *KSensor) Sense(img *image.Gray) float64 {
 	}
 	for x := 0; x < dx; x++ {
 		for y := 0; y < dy; y++ {
-			g := img.GrayAt(x, y)
-			k.ImgBuffer.SetValue(complex(float64(g.Y)/256, 0), []int{0, x, y})
+			g := float64(img.GrayAt(x, y).Y)
+			if rng != nil {
+				g += 3 * rng.NormFloat64()
+				if g < 0 {
+					g = 0
+				} else if g > 255 {
+					g = 255
+				}
+			}
+			k.ImgBuffer.SetValue(complex(g/255, 0), []int{0, x, y})
 		}
 	}
 	freq := fft.FFTN(k.ImgBuffer)
@@ -380,7 +388,7 @@ func main() {
 		mind := NewMarkovMind(rng, int(ActionCount))
 		sensor := KSensor{}
 		for img := range camera.Images {
-			entropy := sensor.Sense(img.Gray)
+			entropy := sensor.Sense(nil, img.Gray)
 			entropy *= 16
 			action := mind.Step(rng, entropy)
 			a = TypeAction(action)
