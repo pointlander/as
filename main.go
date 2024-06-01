@@ -34,6 +34,8 @@ const (
 type (
 	// JoystickState is the state of a joystick
 	JoystickState uint
+	// LightState is the states of the lights
+	LightState uint
 	// Mode is the operating mode of the robot
 	Mode uint
 	// Camera is a camera
@@ -49,6 +51,13 @@ const (
 	JoystickStateUp
 	// JoystickStateDown is the state of a joystick when it is pushed down
 	JoystickStateDown
+)
+
+const (
+	// LightStateOn the light is on
+	LightStateOn LightState = iota
+	// LightStateOff the light is off
+	LightStateOff
 )
 
 const (
@@ -69,6 +78,8 @@ const (
 	ActionBackward
 	// ActionNone
 	ActionNone
+	// ActionLight
+	ActionLight
 	// ActionCount
 	ActionCount
 )
@@ -173,6 +184,7 @@ func main() {
 	var axis [5]int16
 	joystickLeft := JoystickStateNone
 	joystickRight := JoystickStateNone
+	lightState := LightStateOff
 	speed := 0.2
 	var mode Mode
 
@@ -209,6 +221,27 @@ func main() {
 				case ActionRight:
 					joystickLeft = JoystickStateUp
 					joystickRight = JoystickStateDown
+				case ActionLight:
+					pwm := 0
+					if lightState == LightStateOn {
+						pwm, lightState = 0, LightStateOff
+					} else if lightState == LightStateOff {
+						pwm, lightState = 128, LightStateOn
+					}
+					message := map[string]interface{}{
+						"T":   132,
+						"IO4": pwm,
+						"IO5": pwm,
+					}
+					data, err := json.Marshal(message)
+					if err != nil {
+						panic(err)
+					}
+					data = append(data, '\n')
+					_, err = port.Write(data)
+					if err != nil {
+						panic(err)
+					}
 				case ActionNone:
 					joystickLeft = JoystickStateNone
 					joystickRight = JoystickStateNone
@@ -316,6 +349,27 @@ func main() {
 					speed += .1
 					if speed > .3 {
 						speed = 0.1
+					}
+				} else if t.Button == 2 && t.State == 1 {
+					pwm := 0
+					if lightState == LightStateOn {
+						pwm, lightState = 0, LightStateOff
+					} else if lightState == LightStateOff {
+						pwm, lightState = 128, LightStateOn
+					}
+					message := map[string]interface{}{
+						"T":   132,
+						"IO4": pwm,
+						"IO5": pwm,
+					}
+					data, err := json.Marshal(message)
+					if err != nil {
+						panic(err)
+					}
+					data = append(data, '\n')
+					_, err = port.Write(data)
+					if err != nil {
+						panic(err)
 					}
 				}
 			case *sdl.JoyHatEvent:
