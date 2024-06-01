@@ -185,7 +185,7 @@ func main() {
 	joystickLeft := JoystickStateNone
 	joystickRight := JoystickStateNone
 	lightState := LightStateOff
-	speed := 0.2
+	speed := 0.1
 	var mode Mode
 
 	go func() {
