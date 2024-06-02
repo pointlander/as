@@ -80,6 +80,8 @@ const (
 	ActionNone
 	// ActionLight
 	ActionLight
+	// ActionPrevious
+	ActionPrevious
 	// ActionCount
 	ActionCount
 )
@@ -205,7 +207,6 @@ func main() {
 		leftSpeed, rightSpeed := 0.0, 0.0
 		for running {
 			time.Sleep(300 * time.Millisecond)
-
 			if mode == ModeAuto {
 				switch a {
 				case ActionForward:
@@ -241,6 +242,8 @@ func main() {
 					if err != nil {
 						panic(err)
 					}
+				case ActionPrevious:
+					// do nothing
 				case ActionNone:
 					joystickLeft = JoystickStateNone
 					joystickRight = JoystickStateNone

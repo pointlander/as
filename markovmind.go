@@ -39,7 +39,7 @@ func (m *MarkovMind) Step(rng *rand.Rand, entropy float64) int {
 			actions[key] = rng.Float64()
 		}
 	}
-	normalized := softmax(actions, 1)
+	normalized := softmax(actions, .1)
 	sum, selected := 0.0, rng.Float64()
 	act := 0
 	for i, value := range normalized {
