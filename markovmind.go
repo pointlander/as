@@ -15,7 +15,7 @@ type Context [3]byte
 // MarkovMind is a markov model mind
 type MarkovMind struct {
 	Actions int
-	Action  byte
+	Acts    []float64
 	State   Context
 	Markov  map[Context][]float64
 }
@@ -31,7 +31,7 @@ func NewMarkovMind(rng *rand.Rand, actions int) MarkovMind {
 // Step the markov mind
 func (m *MarkovMind) Step(rng *rand.Rand, entropy float64) int {
 	s := byte(math.Round(entropy))
-	action := int(m.Action)
+	acts := m.Acts
 	actions, ok := m.Markov[m.State]
 	if !ok {
 		actions = make([]float64, m.Actions)
@@ -50,20 +50,19 @@ func (m *MarkovMind) Step(rng *rand.Rand, entropy float64) int {
 		}
 	}
 
-	for a := range actions {
-		if a == action {
-			continue
+	if len(acts) > 0 {
+		for a := range actions {
+			actions[a] += 1 - acts[a]
 		}
-		actions[a] += .1
+		sum = 0.0
+		for _, value := range actions {
+			sum += value
+		}
+		for key, value := range actions {
+			actions[key] = value / sum
+		}
 	}
-	sum = 0.0
-	for _, value := range actions {
-		sum += value
-	}
-	for key, value := range actions {
-		actions[key] = value / sum
-	}
-	m.Action = byte(act)
+	m.Acts = actions
 	m.Markov[m.State] = actions
 	m.State[0], m.State[1], m.State[2] = m.State[1], m.State[2], s
 	return act
