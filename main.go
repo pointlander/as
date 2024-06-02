@@ -118,9 +118,8 @@ func softmax(values []float64, t float64) []float64 {
 		output[j] = math.Exp(value - s)
 		sum += output[j]
 	}
-	for j, value := range values {
-		value /= t
-		output[j] = value / sum
+	for j := range output {
+		output[j] /= sum
 	}
 	return output
 }

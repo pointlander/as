@@ -31,7 +31,7 @@ func NewMarkovMind(rng *rand.Rand, actions int) MarkovMind {
 // Step the markov mind
 func (m *MarkovMind) Step(rng *rand.Rand, entropy float64) int {
 	s := byte(math.Round(entropy))
-	action := m.Action
+	action := int(m.Action)
 	actions, ok := m.Markov[m.State]
 	if !ok {
 		actions = make([]float64, m.Actions)
@@ -41,16 +41,17 @@ func (m *MarkovMind) Step(rng *rand.Rand, entropy float64) int {
 	}
 	normalized := softmax(actions, 1)
 	sum, selected := 0.0, rng.Float64()
+	act := 0
 	for i, value := range normalized {
 		sum += value
 		if sum > selected {
-			m.Action = byte(i)
+			act = i
 			break
 		}
 	}
 
 	for a := range actions {
-		if a == int(action) {
+		if a == action {
 			continue
 		}
 		actions[a] += .1
@@ -62,7 +63,8 @@ func (m *MarkovMind) Step(rng *rand.Rand, entropy float64) int {
 	for key, value := range actions {
 		actions[key] = value / sum
 	}
+	m.Action = byte(act)
 	m.Markov[m.State] = actions
 	m.State[0], m.State[1], m.State[2] = m.State[1], m.State[2], s
-	return int(m.Action)
+	return act
 }
