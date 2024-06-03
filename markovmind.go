@@ -52,7 +52,7 @@ func (m *MarkovMind) Step(rng *rand.Rand, entropy float64) int {
 
 	if len(acts) > 0 {
 		for a := range actions {
-			actions[a] += 1 - acts[a]
+			actions[a] += acts[a]
 		}
 		sum = 0.0
 		for _, value := range actions {
