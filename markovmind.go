@@ -10,7 +10,7 @@ import (
 )
 
 // Context is a markov context
-type Context [3]byte
+type Context [2]byte
 
 // MarkovMind is a markov model mind
 type MarkovMind struct {
@@ -64,6 +64,6 @@ func (m *MarkovMind) Step(rng *rand.Rand, entropy float64) int {
 	}
 	m.Acts = actions
 	m.Markov[m.State] = actions
-	m.State[0], m.State[1], m.State[2] = m.State[1], m.State[2], s
+	m.State[0], m.State[1] = m.State[1], s
 	return act
 }
