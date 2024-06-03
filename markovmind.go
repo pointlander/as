@@ -10,7 +10,7 @@ import (
 )
 
 // Context is a markov context
-type Context [3]byte
+type Context [2]byte
 
 // MarkovMind is a markov model mind
 type MarkovMind struct {
@@ -40,8 +40,8 @@ func (m *MarkovMind) Step(rng *rand.Rand, entropy float64) int {
 		}
 	}
 	normalized := softmax(actions, .1)
-	sum, selected := 0.0, rng.Float64()
-	act := 0
+	sum, selected := 0.0, rng.Float64()*4
+	act := int(m.State[1])
 	for i, value := range normalized {
 		sum += value
 		if sum > selected {
@@ -64,6 +64,6 @@ func (m *MarkovMind) Step(rng *rand.Rand, entropy float64) int {
 	}
 	m.Acts = actions
 	m.Markov[m.State] = actions
-	m.State[0], m.State[1], m.State[2] = m.State[1], s, byte(act)
+	m.State[0], m.State[1] = s, byte(act)
 	return act
 }
