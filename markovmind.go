@@ -16,6 +16,7 @@ type Context [2]byte
 type MarkovMind struct {
 	Actions int
 	Acts    []float64
+	Action	int
 	State   Context
 	Markov  map[Context][]float64
 }
@@ -41,7 +42,7 @@ func (m *MarkovMind) Step(rng *rand.Rand, entropy float64) int {
 	}
 	normalized := softmax(actions, .1)
 	sum, selected := 0.0, rng.Float64()*256.0/(float64(s)+1)
-	act := int(m.State[1])
+	act := m.Action
 	for i, value := range normalized {
 		sum += value
 		if sum > selected {
@@ -49,6 +50,7 @@ func (m *MarkovMind) Step(rng *rand.Rand, entropy float64) int {
 			break
 		}
 	}
+	m.Action = act
 
 	if len(acts) > 0 {
 		for a := range actions {
@@ -64,6 +66,6 @@ func (m *MarkovMind) Step(rng *rand.Rand, entropy float64) int {
 	}
 	m.Acts = actions
 	m.Markov[m.State] = actions
-	m.State[0], m.State[1] = s, byte(act)
+	m.State[0], m.State[1] = m.State[1], s
 	return act
 }
