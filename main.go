@@ -80,8 +80,6 @@ const (
 	ActionNone
 	// ActionLight
 	ActionLight
-	// ActionPrevious
-	ActionPrevious
 	// ActionCount
 	ActionCount
 )
@@ -242,8 +240,6 @@ func main() {
 					if err != nil {
 						panic(err)
 					}
-				case ActionPrevious:
-					// do nothing
 				case ActionNone:
 					joystickLeft = JoystickStateNone
 					joystickRight = JoystickStateNone
